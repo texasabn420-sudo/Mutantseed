@@ -1,6 +1,6 @@
 -- Seed Farm (manual)
 
-print("[SeedFarm] v10.67 starting...")
+print("[SeedFarm] v10.68 starting...")
 
 local Rayfield = nil
 pcall(function()
@@ -964,8 +964,8 @@ local VALID_THEMES = { Default = true, Green = true, DarkBlue = true, Amethyst =
 if getgenv().__SeedFarmTheme and not VALID_THEMES[getgenv().__SeedFarmTheme] then getgenv().__SeedFarmTheme = nil end
 
 local Window = Rayfield:CreateWindow({
-    Name = "🌱 Seed Farm v10.67",
-    LoadingTitle = "Seed Farm v10.67",
+    Name = "🌱 Seed Farm v10.68",
+    LoadingTitle = "Seed Farm v10.68",
     LoadingSubtitle = "Rayfield GUI",
     Theme = getgenv().__SeedFarmTheme or "Green",
     ToggleUIKeybind = Enum.KeyCode.RightControl,
@@ -1705,9 +1705,10 @@ local cfgOk, cfgErr = pcall(function() Rayfield:LoadConfiguration() end)
 print("[SeedFarm] LoadConfiguration: " .. tostring(cfgOk) .. (cfgOk and "" or (" - " .. tostring(cfgErr))))
 
 refreshSeedList(true)
-pcall(function()
+local hookOk, hookErr = pcall(function()
+    local RS = game:GetService("ReplicatedStorage")
     local remote = nil
-    for _, d in ipairs(ReplicatedStorage:GetDescendants()) do
+    for _, d in ipairs(RS:GetDescendants()) do
         if d.Name == "CarryStateChanged" and d:IsA("RemoteEvent") then
             remote = d
             break
@@ -1735,7 +1736,7 @@ pcall(function()
         print("[SeedFarm] CarryStateChanged not found - inventory polling only")
     end
     local invRemote = nil
-    for _, d in ipairs(ReplicatedStorage:GetDescendants()) do
+    for _, d in ipairs(RS:GetDescendants()) do
         if d.Name == "InventorySeedCarryStateChanged" and d:IsA("RemoteEvent") then
             invRemote = d
             break
@@ -1752,8 +1753,9 @@ pcall(function()
         print("[SeedFarm] InventorySeedCarryStateChanged hooked - delivery confirmation on")
     end
 end)
+if not hookOk then print("[SeedFarm] carry hook ERROR: " .. tostring(hookErr)) end
 
-print("[SeedFarm] v10.67 loaded - pick a seed!")
+print("[SeedFarm] v10.68 loaded - pick a seed!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
