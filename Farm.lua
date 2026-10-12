@@ -1,6 +1,6 @@
 -- Seed Farm (manual)
 
-print("[SeedFarm] v10.72 starting...")
+print("[SeedFarm] v10.73 starting...")
 
 local Rayfield = nil
 pcall(function()
@@ -944,6 +944,8 @@ local autoSelectBest = false
 local espTierSet = {}
 local syncWorldESP
 local autoFarmOn = false
+local treadmillIdleOn = false
+local treadmillExitFn = nil
 local autoFarmMinTier = "Any"
 local function setStatus(t)
     print("[SeedFarm] " .. tostring(t))
@@ -964,8 +966,8 @@ local VALID_THEMES = { Default = true, Green = true, DarkBlue = true, Amethyst =
 if getgenv().__SeedFarmTheme and not VALID_THEMES[getgenv().__SeedFarmTheme] then getgenv().__SeedFarmTheme = nil end
 
 local Window = Rayfield:CreateWindow({
-    Name = "🌱 Seed Farm v10.72",
-    LoadingTitle = "Seed Farm v10.72",
+    Name = "🌱 Seed Farm v10.73",
+    LoadingTitle = "Seed Farm v10.73",
     LoadingSubtitle = "Rayfield GUI",
     Theme = getgenv().__SeedFarmTheme or "Green",
     ToggleUIKeybind = Enum.KeyCode.RightControl,
@@ -1295,6 +1297,19 @@ FarmTab:CreateToggle({
         if v then setStatus("Auto Farm ON - hunting " .. autoFarmMinTier) end
     end,
 })
+FarmTab:CreateToggle({
+    Name = "🏃 Treadmill When Idle",
+    CurrentValue = false,
+    Callback = function(v)
+        treadmillIdleOn = v
+        print("[SeedFarm] treadmill idle " .. (v and "ON" or "OFF"))
+        if v then
+            setStatus("Treadmill idle ON - trains, grabs " .. autoFarmMinTier .. " seeds")
+        elseif treadmillExitFn then
+            treadmillExitFn()
+        end
+    end,
+})
 FarmTab:CreateDropdown({
     Name = "Auto Farm Targets",
     Flag = "AutoFarmMinTier",
@@ -1476,6 +1491,59 @@ task.spawn(function()
     end
 end)
 
+-- treadmill idle: board your own treadmill (found via the plot finder's
+-- OwnerUserId marker in Workspace.Map.Pens) and train while no target seed
+-- matching the Auto Farm Targets filter is up
+local tmBoardRemote, tmExitRemote, tmTapRemote = nil, nil, nil
+for _, d in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+    if d:IsA("RemoteEvent") then
+        if d.Name == "RequestBoardTreadmill" then tmBoardRemote = d
+        elseif d.Name == "RequestExitTreadmill" then tmExitRemote = d
+        elseif d.Name == "ReportTreadmillTap" then tmTapRemote = d end
+    end
+end
+print("[SeedFarm] treadmill remotes: board=" .. tostring(tmBoardRemote ~= nil) .. " exit=" .. tostring(tmExitRemote ~= nil) .. " tap=" .. tostring(tmTapRemote ~= nil))
+local treadmillState = { boarded = false, model = nil, pos = nil }
+local function findMyTreadmill()
+    local map = workspace:FindFirstChild("Map")
+    local pens = map and map:FindFirstChild("Pens")
+    if not pens then return nil end
+    for _, d in ipairs(pens:GetDescendants()) do
+        if d:IsA("Model") and d.Name:lower():find("treadmill") and d:GetAttribute("OwnerUserId") == LocalPlayer.UserId then
+            return d
+        end
+    end
+    for _, d in ipairs(pens:GetDescendants()) do
+        if d:IsA("Model") and d.Name:lower():find("treadmill") then return d end
+    end
+    return nil
+end
+local function boardTreadmill()
+    local m = findMyTreadmill()
+    if not m then print("[SeedFarm] treadmill: none found in your pen") return false end
+    local pos = nil
+    pcall(function() pos = m:GetPivot().Position end)
+    local root = getRoot()
+    if not pos or not root then return false end
+    root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+    task.wait(0.3)
+    local prompt = m:FindFirstChildWhichIsA("ProximityPrompt", true)
+    if prompt and fireproximityprompt then
+        pcall(function() fireproximityprompt(prompt) end)
+    end
+    if tmBoardRemote then pcall(function() tmBoardRemote:FireServer(m) end) end
+    treadmillState.boarded = true
+    treadmillState.model = m
+    treadmillState.pos = pos
+    setStatus("Training on " .. m.Name)
+    print("[SeedFarm] boarded treadmill " .. m.Name)
+    return true
+end
+treadmillExitFn = function()
+    if tmExitRemote then pcall(function() tmExitRemote:FireServer() end) end
+    treadmillState.boarded = false
+end
+
 local farmBlacklist = {} -- uid -> unblock time (after 3 failed attempts)
 local farmFailCount = {}
 local function farmTarget()
@@ -1501,14 +1569,35 @@ local autoFarmBusy = false
 task.spawn(function()
     while stillAlive() do
         task.wait(0.5)
-        if autoFarmOn and not autoFarmBusy then
+        if (autoFarmOn or treadmillIdleOn) and not autoFarmBusy then
             autoFarmBusy = true
             local okCycle, errCycle = pcall(function()
                 local target = farmTarget()
                 if not target then
-                    setStatus("Auto Farm: no targets, waiting...")
-                    task.wait(2)
+                    if treadmillIdleOn then
+                        if treadmillState.boarded and treadmillState.pos then
+                            local r = getRoot()
+                            if r and (r.Position - treadmillState.pos).Magnitude > 15 then
+                                treadmillState.boarded = false
+                            end
+                        end
+                        if not treadmillState.boarded then
+                            setStatus("No " .. autoFarmMinTier .. " seeds - heading to treadmill")
+                            boardTreadmill()
+                        end
+                        if treadmillState.boarded and tmTapRemote then
+                            pcall(function() tmTapRemote:FireServer(treadmillState.model) end)
+                        end
+                        task.wait(0.4)
+                    else
+                        setStatus("Auto Farm: no targets, waiting...")
+                        task.wait(2)
+                    end
                     return
+                end
+                if treadmillState.boarded then
+                    print("[SeedFarm] target seed up - leaving treadmill")
+                    treadmillExitFn()
                 end
                 selectedSeed = target
                 if updateSeedESP then pcall(updateSeedESP) end
@@ -1524,7 +1613,7 @@ task.spawn(function()
                         triggerRunback()
                     end
                     local waited = 0
-                    while autoFarmOn and (runbackLoopActive or runningBack) and waited < 120 do
+                    while (autoFarmOn or treadmillIdleOn) and (runbackLoopActive or runningBack) and waited < 120 do
                         task.wait(0.25)
                         waited += 0.25
                     end
@@ -1749,7 +1838,7 @@ local hookOk, hookErr = pcall(function()
 end)
 if not hookOk then print("[SeedFarm] carry hook ERROR: " .. tostring(hookErr)) end
 
-print("[SeedFarm] v10.72 loaded - pick a seed!")
+print("[SeedFarm] v10.73 loaded - pick a seed!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
