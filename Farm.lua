@@ -1,6 +1,6 @@
 -- Seed Farm (manual)
 
-print("[SeedFarm] v10.68 starting...")
+print("[SeedFarm] v10.72 starting...")
 
 local Rayfield = nil
 pcall(function()
@@ -964,12 +964,13 @@ local VALID_THEMES = { Default = true, Green = true, DarkBlue = true, Amethyst =
 if getgenv().__SeedFarmTheme and not VALID_THEMES[getgenv().__SeedFarmTheme] then getgenv().__SeedFarmTheme = nil end
 
 local Window = Rayfield:CreateWindow({
-    Name = "🌱 Seed Farm v10.68",
-    LoadingTitle = "Seed Farm v10.68",
+    Name = "🌱 Seed Farm v10.72",
+    LoadingTitle = "Seed Farm v10.72",
     LoadingSubtitle = "Rayfield GUI",
     Theme = getgenv().__SeedFarmTheme or "Green",
     ToggleUIKeybind = Enum.KeyCode.RightControl,
     ConfigurationSaving = { Enabled = true, FolderName = "SeedFarm", FileName = "SeedFarmConfig" },
+    DisableRayfieldPrompts = true,
     Discord = { Enabled = false },
     KeySystem = false,
 })
@@ -1068,13 +1069,6 @@ local function refreshSeedList(force)
         local isRare = s.isTopSeed or s.mutated or s.tier >= 4 or s.source == "halloween"
         if not firstScan and isRare and s.uid and not prevUids[s.uid] then
             print("[SeedFarm] RARE SPAWN: " .. seedDisplayText(s))
-            pcall(function()
-                Rayfield:Notify({
-                    Title = "🌱 Rare seed spawned!",
-                    Content = seedDisplayText(s),
-                    Duration = 6,
-                })
-            end)
         end
     end
     prevUids = curUids
@@ -1755,7 +1749,7 @@ local hookOk, hookErr = pcall(function()
 end)
 if not hookOk then print("[SeedFarm] carry hook ERROR: " .. tostring(hookErr)) end
 
-print("[SeedFarm] v10.68 loaded - pick a seed!")
+print("[SeedFarm] v10.72 loaded - pick a seed!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
