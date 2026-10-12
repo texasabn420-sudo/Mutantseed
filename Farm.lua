@@ -1,6 +1,6 @@
 -- Seed Farm (manual)
 
-print("[SeedFarm] v10.66 starting...")
+print("[SeedFarm] v10.67 starting...")
 
 local Rayfield = nil
 pcall(function()
@@ -964,8 +964,8 @@ local VALID_THEMES = { Default = true, Green = true, DarkBlue = true, Amethyst =
 if getgenv().__SeedFarmTheme and not VALID_THEMES[getgenv().__SeedFarmTheme] then getgenv().__SeedFarmTheme = nil end
 
 local Window = Rayfield:CreateWindow({
-    Name = "🌱 Seed Farm v10.66",
-    LoadingTitle = "Seed Farm v10.66",
+    Name = "🌱 Seed Farm v10.67",
+    LoadingTitle = "Seed Farm v10.67",
     LoadingSubtitle = "Rayfield GUI",
     Theme = getgenv().__SeedFarmTheme or "Green",
     ToggleUIKeybind = Enum.KeyCode.RightControl,
@@ -1753,7 +1753,7 @@ pcall(function()
     end
 end)
 
-print("[SeedFarm] v10.66 loaded - pick a seed!")
+print("[SeedFarm] v10.67 loaded - pick a seed!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -1845,8 +1845,3 @@ task.spawn(function()
         end
     end
 end)
-           end
-        end
-    end
-end)
- 
