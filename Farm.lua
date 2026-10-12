@@ -1,6 +1,6 @@
 -- Seed Farm (manual)
 
-print("[SeedFarm] v10.70 starting...")
+print("[SeedFarm] v10.68 starting...")
 
 local Rayfield = nil
 pcall(function()
@@ -271,7 +271,6 @@ local function getSeedData(prompt, source)
         uid = foundUid,
         seedId = seedId,
         biomeId = p:GetAttribute("BiomeId") or "",
-        spawnPointId = p:GetAttribute("SpawnPointId") or "",
         tierStr = tierStr,
         tier = tierNum,
         weight = tonumber(p:GetAttribute("SeedWeightKg")) or 0,
@@ -965,8 +964,8 @@ local VALID_THEMES = { Default = true, Green = true, DarkBlue = true, Amethyst =
 if getgenv().__SeedFarmTheme and not VALID_THEMES[getgenv().__SeedFarmTheme] then getgenv().__SeedFarmTheme = nil end
 
 local Window = Rayfield:CreateWindow({
-    Name = "🌱 Seed Farm v10.70",
-    LoadingTitle = "Seed Farm v10.70",
+    Name = "🌱 Seed Farm v10.68",
+    LoadingTitle = "Seed Farm v10.68",
     LoadingSubtitle = "Rayfield GUI",
     Theme = getgenv().__SeedFarmTheme or "Green",
     ToggleUIKeybind = Enum.KeyCode.RightControl,
@@ -1026,182 +1025,6 @@ local seedDropdown = FarmTab:CreateDropdown({
         end
     end,
 })
-
--- every known spawn point (scanned in-game Oct 11, 2026): id -> position
-local SPAWN_POINTS = {
-    ["Crown"] = Vector3.new(0.0, 5.0, 1930.0),
-    ["East"] = Vector3.new(18.5, 5.0, 1919.6),
-    ["FarEast"] = Vector3.new(22.8, 5.0, 1903.4),
-    ["FarWest"] = Vector3.new(-22.8, 5.0, 1903.4),
-    ["West"] = Vector3.new(-18.5, 5.0, 1919.6),
-    ["Biome01_SP_0_0"] = Vector3.new(-25.2, -0.0, 30.0),
-    ["Biome01_SP_0_1"] = Vector3.new(-25.2, -0.0, 60.0),
-    ["Biome01_SP_0_2"] = Vector3.new(-25.2, -0.0, 90.0),
-    ["Biome01_SP_1_0"] = Vector3.new(-8.4, -0.0, 30.0),
-    ["Biome01_SP_1_1"] = Vector3.new(-8.4, -0.0, 60.0),
-    ["Biome01_SP_1_2"] = Vector3.new(-8.4, -0.0, 90.0),
-    ["Biome01_SP_2_0"] = Vector3.new(8.4, -0.0, 30.0),
-    ["Biome01_SP_2_1"] = Vector3.new(8.4, -0.0, 60.0),
-    ["Biome01_SP_2_2"] = Vector3.new(8.4, -0.0, 90.0),
-    ["Biome01_SP_3_0"] = Vector3.new(25.2, -0.0, 30.0),
-    ["Biome01_SP_3_1"] = Vector3.new(25.2, -0.0, 60.0),
-    ["Biome01_SP_3_2"] = Vector3.new(25.2, -0.0, 90.0),
-    ["HalloweenHollow_0"] = Vector3.new(-5030.0, 65.3, 166.0),
-    ["HalloweenHollow_1"] = Vector3.new(-5016.7, 65.3, 175.7),
-    ["HalloweenHollow_2"] = Vector3.new(-5021.8, 65.2, 191.3),
-    ["HalloweenHollow_3"] = Vector3.new(-5038.2, 65.4, 191.3),
-    ["HalloweenHollow_4"] = Vector3.new(-5043.3, 65.2, 175.7),
-    ["Biome02_SP_0_0"] = Vector3.new(-25.2, -0.0, 152.5),
-    ["Biome02_SP_0_1"] = Vector3.new(-25.2, -0.0, 185.0),
-    ["Biome02_SP_0_2"] = Vector3.new(-25.2, -0.0, 217.5),
-    ["Biome02_SP_1_0"] = Vector3.new(-8.4, -0.0, 152.5),
-    ["Biome02_SP_1_1"] = Vector3.new(-8.4, -0.0, 185.0),
-    ["Biome02_SP_1_2"] = Vector3.new(-8.4, -0.0, 217.5),
-    ["Biome02_SP_2_0"] = Vector3.new(8.4, -0.0, 152.5),
-    ["Biome02_SP_2_1"] = Vector3.new(8.4, -0.0, 185.0),
-    ["Biome02_SP_2_2"] = Vector3.new(8.4, -0.0, 217.5),
-    ["Biome02_SP_3_0"] = Vector3.new(25.2, -0.0, 152.5),
-    ["Biome02_SP_3_1"] = Vector3.new(25.2, -0.0, 185.0),
-    ["Biome02_SP_3_2"] = Vector3.new(25.2, -0.0, 217.5),
-    ["Biome03_SP_0_0"] = Vector3.new(-25.2, -0.0, 287.5),
-    ["Biome03_SP_0_1"] = Vector3.new(-25.2, -0.0, 325.0),
-    ["Biome03_SP_0_2"] = Vector3.new(-25.2, -0.0, 362.5),
-    ["Biome03_SP_1_0"] = Vector3.new(-8.4, -0.0, 287.5),
-    ["Biome03_SP_1_1"] = Vector3.new(-8.4, -0.0, 325.0),
-    ["Biome03_SP_1_2"] = Vector3.new(-8.4, -0.0, 362.5),
-    ["Biome03_SP_2_0"] = Vector3.new(8.4, -0.0, 287.5),
-    ["Biome03_SP_2_1"] = Vector3.new(8.4, -0.0, 325.0),
-    ["Biome03_SP_2_2"] = Vector3.new(8.4, -0.0, 362.5),
-    ["Biome03_SP_3_0"] = Vector3.new(25.2, -0.0, 287.5),
-    ["Biome03_SP_3_1"] = Vector3.new(25.2, -0.0, 325.0),
-    ["Biome03_SP_3_2"] = Vector3.new(25.2, -0.0, 362.5),
-    ["HalloweenWitchwood_0"] = Vector3.new(-5199.0, 65.3, 736.0),
-    ["HalloweenWitchwood_4"] = Vector3.new(-5181.0, 64.6, 754.0),
-    ["Biome04_SP_0_0"] = Vector3.new(-25.2, -0.0, 436.0),
-    ["Biome04_SP_0_1"] = Vector3.new(-25.2, -0.0, 472.0),
-    ["Biome04_SP_0_2"] = Vector3.new(-25.2, -0.0, 508.0),
-    ["Biome04_SP_0_3"] = Vector3.new(-25.2, -0.0, 544.0),
-    ["Biome04_SP_1_0"] = Vector3.new(-8.4, -0.0, 436.0),
-    ["Biome04_SP_1_1"] = Vector3.new(-8.4, -0.0, 472.0),
-    ["Biome04_SP_1_2"] = Vector3.new(-8.4, -0.0, 508.0),
-    ["Biome04_SP_1_3"] = Vector3.new(-8.4, -0.0, 544.0),
-    ["Biome04_SP_2_0"] = Vector3.new(8.4, -0.0, 436.0),
-    ["Biome04_SP_2_1"] = Vector3.new(8.4, -0.0, 472.0),
-    ["Biome04_SP_2_2"] = Vector3.new(8.4, -0.0, 508.0),
-    ["Biome04_SP_2_3"] = Vector3.new(8.4, -0.0, 544.0),
-    ["Biome04_SP_3_0"] = Vector3.new(25.2, -0.0, 436.0),
-    ["Biome04_SP_3_1"] = Vector3.new(25.2, -0.0, 472.0),
-    ["Biome04_SP_3_2"] = Vector3.new(25.2, -0.0, 508.0),
-    ["Biome04_SP_3_3"] = Vector3.new(25.2, -0.0, 544.0),
-    ["Biome05_SP_0_0"] = Vector3.new(-25.2, -0.0, 615.0),
-    ["Biome05_SP_0_1"] = Vector3.new(-25.2, -0.0, 650.0),
-    ["Biome05_SP_0_2"] = Vector3.new(-25.2, -0.0, 685.0),
-    ["Biome05_SP_0_3"] = Vector3.new(-25.2, -0.0, 720.0),
-    ["Biome05_SP_0_4"] = Vector3.new(-25.2, -0.0, 755.0),
-    ["Biome05_SP_1_0"] = Vector3.new(-8.4, -0.0, 615.0),
-    ["Biome05_SP_1_1"] = Vector3.new(-8.4, -0.0, 650.0),
-    ["Biome05_SP_1_2"] = Vector3.new(-8.4, -0.0, 685.0),
-    ["Biome05_SP_1_3"] = Vector3.new(-8.4, -0.0, 720.0),
-    ["Biome05_SP_1_4"] = Vector3.new(-8.4, -0.0, 755.0),
-    ["Biome05_SP_2_0"] = Vector3.new(8.4, -0.0, 615.0),
-    ["Biome05_SP_2_1"] = Vector3.new(8.4, -0.0, 650.0),
-    ["Biome05_SP_2_2"] = Vector3.new(8.4, -0.0, 685.0),
-    ["Biome05_SP_2_3"] = Vector3.new(8.4, -0.0, 720.0),
-    ["Biome05_SP_2_4"] = Vector3.new(8.4, -0.0, 755.0),
-    ["Biome05_SP_3_0"] = Vector3.new(25.2, -0.0, 615.0),
-    ["Biome05_SP_3_1"] = Vector3.new(25.2, -0.0, 650.0),
-    ["Biome05_SP_3_2"] = Vector3.new(25.2, -0.0, 685.0),
-    ["Biome05_SP_3_3"] = Vector3.new(25.2, -0.0, 720.0),
-    ["Biome05_SP_3_4"] = Vector3.new(25.2, -0.0, 755.0),
-    ["Biome06_SP_0_0"] = Vector3.new(-25.2, -0.0, 825.7),
-    ["Biome06_SP_0_1"] = Vector3.new(-25.2, -0.0, 861.4),
-    ["Biome06_SP_0_2"] = Vector3.new(-25.2, -0.0, 897.1),
-    ["Biome06_SP_0_3"] = Vector3.new(-25.2, -0.0, 932.9),
-    ["Biome06_SP_0_4"] = Vector3.new(-25.2, -0.0, 968.6),
-    ["Biome06_SP_0_5"] = Vector3.new(-25.2, -0.0, 1004.3),
-    ["Biome06_SP_1_0"] = Vector3.new(-8.4, -0.0, 825.7),
-    ["Biome06_SP_1_1"] = Vector3.new(-8.4, -0.0, 861.4),
-    ["Biome06_SP_1_2"] = Vector3.new(-8.4, -0.0, 897.1),
-    ["Biome06_SP_1_3"] = Vector3.new(-8.4, -0.0, 932.9),
-    ["Biome06_SP_1_4"] = Vector3.new(-8.4, -0.0, 968.6),
-    ["Biome06_SP_1_5"] = Vector3.new(-8.4, -0.0, 1004.3),
-    ["Biome06_SP_2_0"] = Vector3.new(8.4, -0.0, 825.7),
-    ["Biome06_SP_2_1"] = Vector3.new(8.4, -0.0, 861.4),
-    ["Biome06_SP_2_2"] = Vector3.new(8.4, -0.0, 897.1),
-    ["Biome06_SP_2_3"] = Vector3.new(8.4, -0.0, 932.9),
-    ["Biome06_SP_2_4"] = Vector3.new(8.4, -0.0, 968.6),
-    ["Biome06_SP_2_5"] = Vector3.new(8.4, -0.0, 1004.3),
-    ["Biome06_SP_3_0"] = Vector3.new(25.2, -0.0, 825.7),
-    ["Biome06_SP_3_1"] = Vector3.new(25.2, -0.0, 861.4),
-    ["Biome06_SP_3_2"] = Vector3.new(25.2, -0.0, 897.1),
-    ["Biome06_SP_3_3"] = Vector3.new(25.2, -0.0, 932.9),
-    ["Biome06_SP_3_4"] = Vector3.new(25.2, -0.0, 968.6),
-    ["Biome06_SP_3_5"] = Vector3.new(25.2, -0.0, 1004.3),
-    ["HalloweenMarsh_0_1"] = Vector3.new(-5744.0, 65.3, 2684.0),
-    ["HalloweenMarsh_1_0"] = Vector3.new(-5425.0, 67.0, 2245.0),
-    ["HalloweenMarsh_1_1"] = Vector3.new(-5393.0, 65.3, 2245.0),
-    ["HalloweenMarsh_2_0"] = Vector3.new(-5879.0, 65.4, 2024.0),
-    ["HalloweenMarsh_2_1"] = Vector3.new(-5847.0, 65.3, 2024.0),
-    ["Biome07_SP_0_6"] = Vector3.new(-25.2, 1.4, 1273.3),
-    ["Biome07_SP_0_7"] = Vector3.new(-25.2, 2.9, 1306.7),
-    ["Biome07_SP_1_2"] = Vector3.new(-8.4, 0.9, 1140.0),
-    ["Biome07_SP_3_1"] = Vector3.new(25.2, 1.2, 1106.7),
-    ["Biome07_SP_3_5"] = Vector3.new(25.2, 1.4, 1240.0),
-    ["Biome08_SP_0_0"] = Vector3.new(-25.2, 1.4, 1376.0),
-    ["Biome08_SP_0_4"] = Vector3.new(-25.2, 1.1, 1520.0),
-    ["Biome08_SP_2_4"] = Vector3.new(8.4, 0.9, 1520.0),
-    ["Biome08_SP_2_8"] = Vector3.new(8.4, 1.3, 1664.0),
-    ["Biome08_SP_3_5"] = Vector3.new(25.2, 6.8, 1556.0),
-    ["HalloweenAbyss_0_0"] = Vector3.new(-8866.0, 245.3, 6474.0),
-    ["HalloweenAbyss_0_1"] = Vector3.new(-8834.0, 245.4, 6474.0),
-    ["HalloweenAbyss_1_0"] = Vector3.new(-8363.0, 246.6, 5754.0),
-    ["HalloweenAbyss_1_1"] = Vector3.new(-8331.0, 246.8, 5754.0),
-    ["HalloweenAbyss_2_0"] = Vector3.new(-9316.0, 244.6, 5609.0),
-    ["HalloweenAbyss_2_1"] = Vector3.new(-9284.0, 245.4, 5609.0),
-    ["HalloweenAbyss_3_0"] = Vector3.new(-8896.0, 246.7, 4894.0),
-    ["HalloweenAbyss_3_1"] = Vector3.new(-8864.0, 245.3, 4894.0),
-    ["HalloweenCastle_0_0"] = Vector3.new(-6166.0, 325.4, 7614.0),
-    ["HalloweenCastle_0_1"] = Vector3.new(-6134.0, 325.3, 7614.0),
-    ["HalloweenCastle_1_0"] = Vector3.new(-6067.0, 327.0, 6805.0),
-    ["HalloweenCastle_1_1"] = Vector3.new(-6035.0, 325.3, 6805.0),
-    ["HalloweenCastle_2_0"] = Vector3.new(-5466.0, 325.3, 7562.0),
-    ["HalloweenCastle_2_1"] = Vector3.new(-5434.0, 326.6, 7562.0),
-    ["HalloweenCastle_3_0"] = Vector3.new(-6516.0, 324.7, 7344.0),
-    ["HalloweenCastle_3_1"] = Vector3.new(-6484.0, 325.4, 7344.0),
-    ["HalloweenCrypt_0"] = Vector3.new(-4022.0, 415.2, 3598.0),
-    ["HalloweenCrypt_2"] = Vector3.new(-4000.0, 415.3, 3620.0),
-    ["HalloweenGraveyard_0_0"] = Vector3.new(-8806.0, 133.4, 2544.0),
-    ["HalloweenGraveyard_0_1"] = Vector3.new(-8774.0, 133.4, 2544.0),
-    ["HalloweenGraveyard_1_0"] = Vector3.new(-8109.0, 134.6, 2859.0),
-    ["HalloweenGraveyard_1_1"] = Vector3.new(-8077.0, 132.9, 2859.0),
-    ["HalloweenGraveyard_2_0"] = Vector3.new(-7416.0, 133.3, 2944.0),
-    ["HalloweenGraveyard_2_1"] = Vector3.new(-7384.0, 132.9, 2944.0),
-    ["SW1_PAD1"] = Vector3.new(730.0, 4.3, 40.0),
-    ["SW1_PAD2"] = Vector3.new(733.0, 3.6, 10.0),
-    ["SW1_PAD3"] = Vector3.new(736.0, 5.7, -20.0),
-    ["SW1_PAD4"] = Vector3.new(733.0, 4.4, -50.0),
-    ["SW1_PAD5"] = Vector3.new(730.0, 3.9, -80.0),
-    ["SW2_PAD1"] = Vector3.new(1170.0, 4.4, 40.0),
-    ["SW2_PAD2"] = Vector3.new(1173.0, 5.6, 10.0),
-    ["SW2_PAD3"] = Vector3.new(1176.0, 4.4, -20.0),
-    ["SW2_PAD4"] = Vector3.new(1173.0, 4.3, -50.0),
-    ["SW2_PAD5"] = Vector3.new(1170.0, 4.3, -80.0),
-    ["SW3_PAD1"] = Vector3.new(1610.0, 4.3, 40.0),
-    ["SW3_PAD2"] = Vector3.new(1613.0, 4.4, 10.0),
-    ["SW3_PAD3"] = Vector3.new(1616.0, 4.2, -20.0),
-    ["SW3_PAD4"] = Vector3.new(1613.0, 4.4, -50.0),
-    ["SW3_PAD5"] = Vector3.new(1610.0, 4.2, -80.0),
-    ["SW4_PAD1"] = Vector3.new(2050.0, 4.3, 40.0),
-    ["SW4_PAD2"] = Vector3.new(2053.0, 5.8, 10.0),
-    ["SW4_PAD3"] = Vector3.new(2056.0, 4.4, -20.0),
-    ["SW4_PAD4"] = Vector3.new(2053.0, 4.4, -50.0),
-    ["SW4_PAD5"] = Vector3.new(2050.0, 4.4, -80.0),
-    ["SW5_PAD1"] = Vector3.new(2490.0, 5.6, 40.0),
-    ["SW5_PAD2"] = Vector3.new(2493.0, 4.4, 10.0),
-    ["SW5_PAD3"] = Vector3.new(2496.0, 4.2, -20.0),
-    ["SW5_PAD4"] = Vector3.new(2493.0, 4.3, -50.0),
-    ["SW5_PAD5"] = Vector3.new(2490.0, 5.6, -80.0),
-}
 
 local lastSeedSig = ""
 local dropRebuilding = false
@@ -1275,61 +1098,6 @@ end
 FarmTab:CreateButton({
     Name = "🔄 Refresh Seeds",
     Callback = function() refreshSeedList(true) end,
-})
-
--- teleport through the spawn points: pick any of the 172 points directly,
--- or cycle through the seeds currently sitting at spawn points
-local spawnPointNames = {}
-for id in pairs(SPAWN_POINTS) do spawnPointNames[#spawnPointNames + 1] = id end
-table.sort(spawnPointNames)
-local selectedSpawnPoint = nil
-local nextSeedIdx = 0
-
-FarmTab:CreateSection("Spawn Points")
-FarmTab:CreateDropdown({
-    Name = "Spawn Point",
-    Options = spawnPointNames,
-    CurrentOption = {},
-    MultipleOptions = false,
-    Callback = function(Options)
-        selectedSpawnPoint = type(Options) == "table" and Options[1] or Options
-        print("[SeedFarm] spawn point selected: " .. tostring(selectedSpawnPoint))
-    end,
-})
-FarmTab:CreateButton({
-    Name = "📍 TP TO SPAWN POINT",
-    Callback = function()
-        if not selectedSpawnPoint then setStatus("Pick a spawn point first!") return end
-        local pos = SPAWN_POINTS[selectedSpawnPoint]
-        if not pos then setStatus("Unknown spawn point") return end
-        local root = getRoot()
-        if not root then setStatus("No character!") return end
-        stopRunback()
-        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-        setStatus("Teleported to " .. selectedSpawnPoint)
-        print("[SeedFarm] teleported to spawn point " .. selectedSpawnPoint)
-    end,
-})
-FarmTab:CreateButton({
-    Name = "⏭️ TP TO NEXT SEED",
-    Callback = function()
-        local atPoints = {}
-        for _, s in ipairs(findWildSeeds()) do
-            if s.spawnPointId and s.spawnPointId ~= "" and s.pos then
-                atPoints[#atPoints + 1] = s
-            end
-        end
-        if #atPoints == 0 then setStatus("No seeds at spawn points right now") return end
-        table.sort(atPoints, function(a, b) return a.spawnPointId < b.spawnPointId end)
-        nextSeedIdx = nextSeedIdx % #atPoints + 1
-        local s = atPoints[nextSeedIdx]
-        local root = getRoot()
-        if not root then setStatus("No character!") return end
-        stopRunback()
-        root.CFrame = CFrame.new(s.pos + Vector3.new(0, 3, 0))
-        setStatus(string.format("Seed %d/%d: %s @ %s", nextSeedIdx, #atPoints, s.name, s.spawnPointId))
-        print(string.format("[SeedFarm] next seed %d/%d: %s @ %s", nextSeedIdx, #atPoints, s.name, s.spawnPointId))
-    end,
 })
 
 -- background refresh: only pushes to the dropdown when the list changed,
@@ -1987,7 +1755,7 @@ local hookOk, hookErr = pcall(function()
 end)
 if not hookOk then print("[SeedFarm] carry hook ERROR: " .. tostring(hookErr)) end
 
-print("[SeedFarm] v10.70 loaded - pick a seed!")
+print("[SeedFarm] v10.68 loaded - pick a seed!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
