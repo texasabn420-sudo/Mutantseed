@@ -1,6 +1,6 @@
 -- Seed Farm (manual)
 
-print("[SeedFarm] v10.73 starting...")
+print("[SeedFarm] v10.78 starting...")
 
 local Rayfield = nil
 pcall(function()
@@ -14,6 +14,7 @@ print("[SeedFarm] Rayfield loaded")
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
+local CollectionService = game:GetService("CollectionService")
 local LocalPlayer = Players.LocalPlayer
 
 getgenv().__SeedFarmGen = (getgenv().__SeedFarmGen or 0) + 1
@@ -966,8 +967,8 @@ local VALID_THEMES = { Default = true, Green = true, DarkBlue = true, Amethyst =
 if getgenv().__SeedFarmTheme and not VALID_THEMES[getgenv().__SeedFarmTheme] then getgenv().__SeedFarmTheme = nil end
 
 local Window = Rayfield:CreateWindow({
-    Name = "🌱 Seed Farm v10.73",
-    LoadingTitle = "Seed Farm v10.73",
+    Name = "🌱 Seed Farm v10.78",
+    LoadingTitle = "Seed Farm v10.78",
     LoadingSubtitle = "Rayfield GUI",
     Theme = getgenv().__SeedFarmTheme or "Green",
     ToggleUIKeybind = Enum.KeyCode.RightControl,
@@ -1102,6 +1103,8 @@ task.spawn(function()
     while stillAlive() do
         task.wait(1.5)
         pcall(function() refreshSeedList(false) end)
+        pcall(function() refreshSpeedwayList(false) end)
+        pcall(function() refreshImpList(false) end)
     end
 end)
 
@@ -1155,6 +1158,551 @@ FarmTab:CreateButton({
         doTeleport()
     end,
 })
+
+--------------------------------------------------------------------------------
+-- SPEEDWAY TAB (speedway seeds as they spawn: SW* IDs + codex seed pads)
+--------------------------------------------------------------------------------
+local SpeedwayTab = Window:CreateTab("🏁 Speedway", 4483362458)
+SpeedwayTab:CreateSection("Speedway Seeds")
+
+local function isSpeedwaySeed(s)
+    return (s.seedId and s.seedId:match("^SW")) or s.source == "codex"
+end
+
+local function speedwaySeeds()
+    local out = {}
+    for _, s in ipairs(findWildSeeds()) do
+        if isSpeedwaySeed(s) then
+            table.insert(out, s)
+        end
+    end
+    return out
+end
+
+local speedwayByText = {}
+local speedwayDropdown = SpeedwayTab:CreateDropdown({
+    Name = "Select Speedway Seed",
+    Options = { "— press Refresh —" },
+    CurrentOption = { "— press Refresh —" },
+    MultipleOptions = false,
+    Callback = function(Options)
+        local sel = type(Options) == "table" and Options[1] or Options
+        local s = sel and speedwayByText[sel]
+        if s then
+            selectedSeed = s
+            setStatus("Selected: " .. s.name)
+            print("[SeedFarm] selected speedway seed " .. s.name .. " (" .. s.source .. ")")
+            if updateSeedESP then pcall(updateSeedESP) end
+        end
+    end,
+})
+
+local lastSpeedwaySig = ""
+local speedwayRebuilding = false
+-- global: the background refresh loop calls this (defined before it textually)
+function refreshSpeedwayList(force)
+    if speedwayRebuilding then return end
+    speedwayRebuilding = true
+    local seeds = speedwaySeeds()
+    print("[SeedFarm] found " .. #seeds .. " speedway seeds")
+    local opts, map = {}, {}
+    for _, s in ipairs(seeds) do
+        local t = seedDisplayText(s)
+        table.insert(opts, t)
+        map[t] = s
+    end
+    if #opts == 0 then
+        opts = { "— no speedway seeds —" }
+    end
+    local sig = table.concat(opts, "|")
+    if force or sig ~= lastSpeedwaySig then
+        lastSpeedwaySig = sig
+        speedwayByText = map
+        pcall(function() speedwayDropdown:Refresh(opts) end)
+    end
+    speedwayRebuilding = false
+end
+
+SpeedwayTab:CreateButton({
+    Name = "🔄 Refresh Speedway Seeds",
+    Callback = function() refreshSpeedwayList(true) end,
+})
+
+SpeedwayTab:CreateButton({
+    Name = "📍 TP TO SPEEDWAY SEED",
+    Callback = doTeleport,
+})
+
+SpeedwayTab:CreateButton({
+    Name = "👑 TP TO BEST SPEEDWAY",
+    Callback = function()
+        local seeds = speedwaySeeds()
+        local best = bestSeed(seeds)
+        if not best then
+            setStatus("No speedway seeds found!")
+            return
+        end
+        selectedSeed = best
+        print("[SeedFarm] TP TO BEST SPEEDWAY -> " .. seedDisplayText(best))
+        if updateSeedESP then pcall(updateSeedESP) end
+        doTeleport()
+    end,
+})
+
+SpeedwayTab:CreateLabel("Speedway seeds appear here as they spawn.")
+
+SpeedwayTab:CreateSection("Chambers")
+
+-- chamber positions come from the game's own speedway-config module:
+-- chamberSpawnPosition(tier) is speedway-local, speedwayToWorld adds (5000,0,0)
+local speedwayCfgCache = false -- false = not tried yet
+local function getSpeedwayCfg()
+    if speedwayCfgCache ~= false then return speedwayCfgCache end
+    local ok, mod = pcall(function()
+        local rs = game:GetService("ReplicatedStorage")
+        local common = rs:FindFirstChild("Common")
+        local cfgFolder = common and common:FindFirstChild("config")
+        local m = cfgFolder and cfgFolder:FindFirstChild("speedway-config")
+        if not m then return nil end
+        return require(m)
+    end)
+    speedwayCfgCache = (ok and mod) or nil
+    return speedwayCfgCache
+end
+
+local function teleportToChamber(tier)
+    local cfg = getSpeedwayCfg()
+    if not cfg or not cfg.chamberSpawnPosition or not cfg.speedwayToWorld then
+        setStatus("Speedway config not found!")
+        print("[SeedFarm] chamber teleport: speedway-config module not resolved")
+        return
+    end
+    local ok, pos = pcall(function()
+        return cfg.speedwayToWorld(cfg.chamberSpawnPosition(tier))
+    end)
+    if not ok or typeof(pos) ~= "Vector3" then
+        setStatus("Chamber position failed!")
+        print("[SeedFarm] chamber teleport: position lookup failed for tier " .. tier)
+        return
+    end
+    local root = getRoot()
+    if not root then setStatus("No character!") return end
+    root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+    setStatus("Chamber " .. tier)
+    print(string.format("[SeedFarm] teleported to chamber %d at %s", tier, tostring(pos)))
+end
+
+local CHAMBER_NAMES = { "VELOCITY", "OVERDRIVE", "HYPER", "GLITCHED", "HACKED" }
+for tier = 1, 5 do
+    local t = tier -- fresh local per iteration for the closure
+    SpeedwayTab:CreateButton({
+        Name = "🚪 Chamber " .. t .. " · " .. CHAMBER_NAMES[t],
+        Callback = function() teleportToChamber(t) end,
+    })
+end
+
+--------------------------------------------------------------------------------
+-- IMP FARM TAB (pumpkin imp farmer v1.1, merged in)
+-- Imp = Configuration "Imp" in ReplicatedStorage.HalloweenPumpkinImp.
+-- Position P + V*dt, hits via shovel Activate() (server cooldown 1.25s).
+--------------------------------------------------------------------------------
+local ImpTab = Window:CreateTab("🎃 Imp Farm", 4483362458)
+ImpTab:CreateSection("Imps")
+
+local ImpConfig = {
+    ImpFolderName = "HalloweenPumpkinImp",
+    ImpConfigName = "Imp",
+    SwingDelay = 1.3,       -- server shovel cooldown is 1.25
+    TeleportOffset = 6,
+    MaxDistance = 2000,
+    BagGrabDelay = 1.0,
+}
+
+local impLoopActive = false
+local impAutoEnabled = false
+local impDefeated = 0
+local impBags = 0
+local selectedImp = nil
+
+local impFolder = nil
+local function resolveImpFolder()
+    if impFolder and impFolder.Parent then return impFolder end
+    local rs = game:GetService("ReplicatedStorage")
+    impFolder = rs:FindFirstChild(ImpConfig.ImpFolderName)
+        or Workspace:FindFirstChild(ImpConfig.ImpFolderName)
+    return impFolder
+end
+
+local function getImps()
+    local out = {}
+    local folder = resolveImpFolder()
+    if not folder then return out end
+    for _, ch in ipairs(folder:GetChildren()) do
+        if ch.Name == ImpConfig.ImpConfigName and ch:IsA("Configuration") then
+            if ch:GetAttribute("State") ~= "Despawned" then
+                table.insert(out, ch)
+            end
+        end
+    end
+    return out
+end
+
+local function impState(cfg) return cfg:GetAttribute("State") or "Idle" end
+
+local function impHealth(cfg)
+    local h = cfg:GetAttribute("Health")
+    local m = cfg:GetAttribute("MaxHealth")
+    if type(h) == "number" and type(m) == "number" and m > 0 then return h, m end
+    return nil, nil
+end
+
+local function impPosition(cfg)
+    local p = cfg:GetAttribute("P")
+    if typeof(p) ~= "Vector3" then return nil end
+    local v = cfg:GetAttribute("V")
+    local t = cfg:GetAttribute("T")
+    local now = Workspace:GetServerTimeNow()
+    if typeof(v) == "Vector3" and type(t) == "number" and type(now) == "number" then
+        return p + v * math.clamp(now - t, 0, 0.25)
+    end
+    return p
+end
+
+local ImpHittable = { Aggro = true, Running = true, PortalCasting = true, PortalCancelled = true }
+
+local function getNearestImp()
+    local root = getRoot()
+    if not root then return nil end
+    local rootPos = root.Position
+    local best, bestDist = nil, ImpConfig.MaxDistance
+    for _, cfg in ipairs(getImps()) do
+        local pos = impPosition(cfg)
+        if pos then
+            local d = (rootPos - pos).Magnitude
+            if d < bestDist then best, bestDist = cfg, d end
+        end
+    end
+    return best
+end
+
+local function getImpShovel()
+    local character = LocalPlayer.Character
+    if character then
+        for _, tool in ipairs(character:GetChildren()) do
+            if tool:IsA("Tool") and string.find(string.lower(tool.Name), "shovel", 1, true) then
+                return tool
+            end
+        end
+    end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack and character then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and string.find(string.lower(tool.Name), "shovel", 1, true) then
+                tool.Parent = character
+                return tool
+            end
+        end
+    end
+    return nil
+end
+
+local function getDroppedBags()
+    local out = {}
+    local ok, tagged = pcall(function() return CollectionService:GetTagged("GoldenCandyBag") end)
+    if not ok or not tagged then return out end
+    for _, m in ipairs(tagged) do
+        if m:IsA("Model") and m.Parent then
+            local state = m:GetAttribute("GoldenBagState") or "Dropped"
+            local carrier = m:GetAttribute("GoldenBagCarrierUserId") or 0
+            if state == "Dropped" and carrier == 0 then table.insert(out, m) end
+        end
+    end
+    return out
+end
+
+local function grabImpBag(bag)
+    local root = getRoot()
+    if not root then return false end
+    local ok, pivot = pcall(function() return bag:GetPivot() end)
+    if not ok or not pivot then return false end
+    root.CFrame = CFrame.new(pivot.Position + Vector3.new(0, 3, 0))
+    task.wait(0.3)
+    for _, d in ipairs(bag:GetDescendants()) do
+        if d:IsA("ProximityPrompt") then pcall(function() fireproximityprompt(d) end) end
+    end
+    task.wait(0.5)
+    local state = bag:GetAttribute("GoldenBagState")
+    local carrier = bag:GetAttribute("GoldenBagCarrierUserId") or 0
+    return (not bag.Parent) or state == "Carried" or carrier ~= 0
+end
+
+local impStatusLabel = ImpTab:CreateLabel("Idle")
+local impCountLabel = ImpTab:CreateLabel("🎃 0   🍬 0")
+local function setImpStatus(text)
+    pcall(function()
+        impStatusLabel:Set(text)
+        impCountLabel:Set(string.format("🎃 %d   🍬 %d", impDefeated, impBags))
+    end)
+    print("[SeedFarm][Imp] " .. text)
+end
+
+local function impDisplayText(cfg)
+    local root = getRoot()
+    local rootPos = root and root.Position
+    local pos = impPosition(cfg)
+    local dist = (rootPos and pos) and (rootPos - pos).Magnitude or nil
+    local state = impState(cfg)
+    local h, m = impHealth(cfg)
+    local txt = "🎃 " .. state
+    if h and m then txt = txt .. string.format(" %d/%d", math.floor(h), math.floor(m)) end
+    if state == "PortalCasting" then
+        local now = Workspace:GetServerTimeNow()
+        local endsAt = cfg:GetAttribute("CastEndsAt")
+        if type(now) == "number" and type(endsAt) == "number" then
+            txt = txt .. string.format(" ⏳%ds", math.max(0, math.floor(endsAt - now)))
+        end
+    end
+    if dist then txt = txt .. string.format(" [%dm]", math.floor(dist)) end
+    return txt
+end
+
+local impByText = {}
+local impDropdown = ImpTab:CreateDropdown({
+    Name = "Select Imp",
+    Options = { "— press Refresh —" },
+    CurrentOption = { "— press Refresh —" },
+    MultipleOptions = false,
+    Callback = function(Options)
+        local sel = type(Options) == "table" and Options[1] or Options
+        selectedImp = sel and impByText[sel]
+        if selectedImp then setImpStatus("Selected: " .. impState(selectedImp)) end
+    end,
+})
+
+local lastImpSig = ""
+local impRebuilding = false
+-- global: the background refresh loop calls this
+function refreshImpList(force)
+    if impRebuilding then return end
+    impRebuilding = true
+    local imps = getImps()
+    local opts, map = {}, {}
+    for _, cfg in ipairs(imps) do
+        local t = impDisplayText(cfg)
+        table.insert(opts, t)
+        map[t] = cfg
+    end
+    if #opts == 0 then opts = { "— no imps —" } end
+    local sig = table.concat(opts, "|")
+    if force or sig ~= lastImpSig then
+        lastImpSig = sig
+        impByText = map
+        pcall(function() impDropdown:Refresh(opts) end)
+    end
+    -- bag count on the grab button
+    local bags = getDroppedBags()
+    pcall(function()
+        impBagBtn:Set(#bags > 0 and ("🍬 GRAB BAG (" .. #bags .. ")") or "🍬 GRAB BAG")
+    end)
+    impRebuilding = false
+end
+
+ImpTab:CreateButton({
+    Name = "🔄 Refresh Imps",
+    Callback = function() refreshImpList(true) end,
+})
+
+ImpTab:CreateSection("Actions")
+
+local function farmImpBody(cfg)
+    local shovel = getImpShovel()
+    if not shovel then
+        setImpStatus("No shovel found!")
+        warn("[SeedFarm][Imp] no shovel tool in backpack/character")
+        return
+    end
+    print("[SeedFarm][Imp] using shovel: " .. shovel.Name)
+    setImpStatus("Fighting imp...")
+    local startTime = os.clock()
+    local lastSwing = 0
+    local lastHitSeq = cfg:GetAttribute("HitSeq") or 0
+    while cfg and cfg.Parent do
+        local state = impState(cfg)
+        if state == "Defeated" then
+            impDefeated = impDefeated + 1
+            setImpStatus("Imp defeated!")
+            print("[SeedFarm][Imp] imp defeated")
+            break
+        end
+        if state == "Escaping" or state == "Despawned" then
+            setImpStatus("Imp " .. state)
+            break
+        end
+        local character = LocalPlayer.Character
+        local root = getRoot()
+        if not root then break end
+        if shovel.Parent ~= character and character then
+            shovel.Parent = character
+        end
+        local pos = impPosition(cfg)
+        if pos then
+            root.CFrame = CFrame.lookAt(pos + Vector3.new(0, 0, ImpConfig.TeleportOffset), pos)
+        end
+        if ImpHittable[state] and (os.clock() - lastSwing) >= ImpConfig.SwingDelay then
+            lastSwing = os.clock()
+            pcall(function() shovel:Activate() end)
+        end
+        local seq = cfg:GetAttribute("HitSeq") or 0
+        if seq > lastHitSeq then
+            lastHitSeq = seq
+            local h, m = impHealth(cfg)
+            print(string.format("[SeedFarm][Imp] hit %d confirmed%s",
+                seq, (h and m) and string.format(" (%d/%d HP)", math.floor(h), math.floor(m)) or ""))
+        end
+        if os.clock() - startTime > 300 then
+            warn("[SeedFarm][Imp] cycle timed out")
+            break
+        end
+        task.wait(0.1)
+    end
+    task.wait(ImpConfig.BagGrabDelay)
+    local bagGrabbed = false
+    local bags = getDroppedBags()
+    if #bags > 0 then
+        setImpStatus("Grabbing bag...")
+        if grabImpBag(bags[1]) then
+            impBags = impBags + 1
+            bagGrabbed = true
+            setImpStatus("Bag grabbed!")
+            print("[SeedFarm][Imp] golden bag secured")
+            -- back to the safe zone with the loot
+            setImpStatus("Running back...")
+            pcall(function() triggerRunback() end)
+        end
+    end
+    return bagGrabbed
+end
+
+local impWaitingForNext = false
+local lastFoughtImp = nil
+local suppressImpToggleCb = false
+local impAutoToggle = nil
+local function setImpAutoUI(v)
+    suppressImpToggleCb = true
+    pcall(function() impAutoToggle:Set(v) end)
+    suppressImpToggleCb = false
+end
+
+function runImpCycle(cfg, fromAuto)
+    if impLoopActive then return end
+    if not cfg or not cfg.Parent then return end
+    print("[SeedFarm][Imp] cycle start: " .. impState(cfg))
+    impLoopActive = true
+    local bagGrabbed = false
+    local ok, err = xpcall(function() bagGrabbed = farmImpBody(cfg) end,
+        function(e) return debug.traceback(tostring(e)) end)
+    if not ok then warn("[SeedFarm][Imp] cycle error: " .. tostring(err)) end
+    impLoopActive = false
+    if fromAuto then
+        -- one imp per engagement: toggle off until a NEW imp shows up
+        impAutoEnabled = false
+        impWaitingForNext = true
+        lastFoughtImp = cfg
+        setImpAutoUI(false)
+        setImpStatus(bagGrabbed and "Bag secured - waiting for next imp"
+            or "Cycle done - waiting for next imp")
+        print("[SeedFarm][Imp] standing down until a new imp spawns")
+    elseif not impAutoEnabled then
+        setImpStatus("Idle")
+    end
+    pcall(function() refreshImpList(true) end)
+end
+
+ImpTab:CreateButton({
+    Name = "🎯 FIGHT SELECTED",
+    Callback = function()
+        if selectedImp and selectedImp.Parent then
+            task.spawn(function() runImpCycle(selectedImp, false) end)
+        else
+            setImpStatus("Select an imp first!")
+        end
+    end,
+})
+
+impAutoToggle = ImpTab:CreateToggle({
+    Name = "🔁 Imp Auto-Farm",
+    CurrentValue = false,
+    Callback = function(v)
+        if suppressImpToggleCb then return end
+        impAutoEnabled = v
+        impWaitingForNext = false -- user took over; cancel any wait
+        setImpStatus(v and "Auto-farm ON" or "Auto-farm OFF")
+        print("[SeedFarm][Imp] auto-farm " .. (v and "enabled" or "disabled"))
+    end,
+})
+
+impBagBtn = ImpTab:CreateButton({
+    Name = "🍬 GRAB BAG",
+    Callback = function()
+        if impLoopActive then return end
+        task.spawn(function()
+            local bags = getDroppedBags()
+            if #bags == 0 then setImpStatus("No bags to grab") return end
+            setImpStatus("Grabbing bag...")
+            if grabImpBag(bags[1]) then
+                impBags = impBags + 1
+                setImpStatus("Bag grabbed!")
+            else
+                setImpStatus("Bag grab failed")
+            end
+        end)
+    end,
+})
+
+-- imp auto-farm loop
+task.spawn(function()
+    while stillAlive() do
+        task.wait(2)
+        if impWaitingForNext then
+            -- a new imp (different instance than the one just fought) re-arms auto
+            local fresh = false
+            for _, c in ipairs(getImps()) do
+                if c ~= lastFoughtImp then fresh = true break end
+            end
+            if fresh then
+                impWaitingForNext = false
+                lastFoughtImp = nil
+                impAutoEnabled = true
+                setImpAutoUI(true)
+                setImpStatus("New imp! Auto-farm ON")
+                print("[SeedFarm][Imp] new imp detected - re-engaging")
+            end
+        elseif impAutoEnabled and not impLoopActive then
+            local imp = getNearestImp()
+            if imp then
+                setImpStatus("Auto: " .. impState(imp))
+                runImpCycle(imp, true)
+            else
+                setImpStatus("Auto: waiting for imp")
+            end
+        end
+        pcall(function() refreshImpList(false) end)
+    end
+end)
+
+-- refresh on imp/bag add/remove
+task.spawn(function()
+    local folder = resolveImpFolder()
+    if folder then
+        folder.ChildAdded:Connect(function() pcall(function() refreshImpList(true) end) end)
+        folder.ChildRemoved:Connect(function() pcall(function() refreshImpList(true) end) end)
+    end
+    pcall(function()
+        CollectionService:GetInstanceAddedSignal("GoldenCandyBag"):Connect(function() pcall(function() refreshImpList(true) end) end)
+        CollectionService:GetInstanceRemovedSignal("GoldenCandyBag"):Connect(function() pcall(function() refreshImpList(true) end) end)
+    end)
+end)
+pcall(function() refreshImpList(true) end)
 
 runBackBtn = FarmTab:CreateButton({
     Name = "🏃 RUN BACK",
@@ -1504,10 +2052,45 @@ for _, d in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
 end
 print("[SeedFarm] treadmill remotes: board=" .. tostring(tmBoardRemote ~= nil) .. " exit=" .. tostring(tmExitRemote ~= nil) .. " tap=" .. tostring(tmTapRemote ~= nil))
 local treadmillState = { boarded = false, model = nil, pos = nil }
+local penAttrLogged = false
+local function getAssignedPen()
+    -- pen-guidance-config: player attributes AssignedPenCenter / AssignedPenSize
+    for _, holder in ipairs({ LocalPlayer, LocalPlayer.Character }) do
+        if holder then
+            local okC, center = pcall(function() return holder:GetAttribute("AssignedPenCenter") end)
+            local okS, size = pcall(function() return holder:GetAttribute("AssignedPenSize") end)
+            if okC and okS and typeof(center) == "Vector3" and typeof(size) == "Vector3" then
+                return center, size
+            end
+        end
+    end
+    return nil, nil
+end
 local function findMyTreadmill()
     local map = workspace:FindFirstChild("Map")
     local pens = map and map:FindFirstChild("Pens")
     if not pens then return nil end
+    -- 1. own pen via AssignedPenCenter/AssignedPenSize attributes (fast, exact)
+    local center, size = getAssignedPen()
+    if not penAttrLogged then
+        penAttrLogged = true
+        print("[SeedFarm] AssignedPenCenter=" .. tostring(center) .. " AssignedPenSize=" .. tostring(size))
+    end
+    if center and size then
+        for _, d in ipairs(pens:GetDescendants()) do
+            if d:IsA("Model") and d.Name:lower():find("treadmill") then
+                local pos = nil
+                pcall(function() pos = d:GetPivot().Position end)
+                if pos
+                    and math.abs(pos.X - center.X) <= size.X / 2
+                    and math.abs(pos.Z - center.Z) <= size.Z / 2
+                    and math.abs(pos.Y - center.Y) <= size.Y / 2 + 8 then
+                    return d
+                end
+            end
+        end
+    end
+    -- 2. fallback: OwnerUserId marker scan
     for _, d in ipairs(pens:GetDescendants()) do
         if d:IsA("Model") and d.Name:lower():find("treadmill") and d:GetAttribute("OwnerUserId") == LocalPlayer.UserId then
             return d
@@ -1788,6 +2371,7 @@ local cfgOk, cfgErr = pcall(function() Rayfield:LoadConfiguration() end)
 print("[SeedFarm] LoadConfiguration: " .. tostring(cfgOk) .. (cfgOk and "" or (" - " .. tostring(cfgErr))))
 
 refreshSeedList(true)
+pcall(function() refreshSpeedwayList(true) end)
 local hookOk, hookErr = pcall(function()
     local RS = game:GetService("ReplicatedStorage")
     local remote = nil
@@ -1838,7 +2422,7 @@ local hookOk, hookErr = pcall(function()
 end)
 if not hookOk then print("[SeedFarm] carry hook ERROR: " .. tostring(hookErr)) end
 
-print("[SeedFarm] v10.73 loaded - pick a seed!")
+print("[SeedFarm] v10.78 loaded - pick a seed!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
