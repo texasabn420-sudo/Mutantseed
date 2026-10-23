@@ -1,6 +1,6 @@
 -- Seed Farm (manual)
 
-print("[SeedFarm] v10.78 starting...")
+print("[SeedFarm] v10.81 starting...")
 
 local Rayfield = nil
 pcall(function()
@@ -152,7 +152,8 @@ local HALLOWEEN_SEED_IDS = {
     ["HW_RITUAL_HAUNTED"] = true,
 }
 
--- Complete SeedId database from wild-seed dump (Oct 10, 2026).
+-- SeedId database from wild-seed dump (Oct 10, 2026), synced with the
+-- game's own seed-config (Oct 22, 2026 dump): all 53 config seeds.
 -- Used as fallback when a seed's live SeedName/SeedTier attributes are missing.
 local SEED_DB = {
     ["B01_T1"] = { name = "Sprout Seed", tier = "T1" },
@@ -190,24 +191,53 @@ local SEED_DB = {
     ["HW_RITUAL_HAUNTED"] = { name = "👻 Ghostly Ritual Seed", tier = "T3" },
     ["SW1_EXTRA"] = { name = "Prime Velocity Seed", tier = "T2" },
     ["SW1_FAILED"] = { name = "Failed Velocity Seed", tier = "T2" }, -- INF: inferred
-    ["SW1_PERFECT"] = { name = "Perfect Velocity Seed", tier = "T2" }, -- INF: inferred
+    ["SW1_PERFECT"] = { name = "Perfect Velocity Seed", tier = "T4Guardian" }, -- seed-config
     ["SW1_REGULAR"] = { name = "Velocity Seed", tier = "T1" },
     ["SW2_EXTRA"] = { name = "Prime Overdrive Seed", tier = "T2" }, -- INF: inferred
     ["SW2_FAILED"] = { name = "Failed Overdrive Seed", tier = "T2" }, -- INF: inferred
-    ["SW2_PERFECT"] = { name = "Perfect Overdrive Seed", tier = "T2" }, -- INF: inferred
+    ["SW2_PERFECT"] = { name = "Perfect Overdrive Seed", tier = "T4Guardian" }, -- seed-config
     ["SW2_REGULAR"] = { name = "Overdrive Seed", tier = "T1" },
     ["SW3_EXTRA"] = { name = "Prime Hyper Seed", tier = "T2" },
     ["SW3_FAILED"] = { name = "Failed Hyper Seed", tier = "T2" }, -- INF: inferred
-    ["SW3_PERFECT"] = { name = "Perfect Hyper Seed", tier = "T2" }, -- INF: inferred
+    ["SW3_PERFECT"] = { name = "Perfect Hyper Seed", tier = "T4Guardian" }, -- seed-config
     ["SW3_REGULAR"] = { name = "Hyper Seed", tier = "T1" },
     ["SW4_EXTRA"] = { name = "Prime Glitched Seed", tier = "T2" }, -- INF: inferred
     ["SW4_FAILED"] = { name = "Failed Glitched Seed", tier = "T2" },
-    ["SW4_PERFECT"] = { name = "Perfect Glitched Seed", tier = "T2" }, -- INF: inferred
+    ["SW4_PERFECT"] = { name = "Perfect Glitched Seed", tier = "T4Guardian" }, -- seed-config -- INF: inferred
     ["SW4_REGULAR"] = { name = "Glitched Seed", tier = "T1" },
     ["SW5_EXTRA"] = { name = "Prime Hacked Seed", tier = "T2" }, -- INF: inferred
     ["SW5_FAILED"] = { name = "Failed Hacked Seed", tier = "T2" },
-    ["SW5_PERFECT"] = { name = "Perfect Hacked Seed", tier = "T2" }, -- INF: inferred
+    ["SW5_PERFECT"] = { name = "Perfect Hacked Seed", tier = "T4Guardian" }, -- seed-config
     ["SW5_REGULAR"] = { name = "Hacked Seed", tier = "T1" },
+    -- seed-config sync (Oct 22, 2026): the T3/T4 wild seeds, the six
+    -- Specials, and the Arena seeds were missing from this DB - without an
+    -- entry a seed whose live SeedTier attribute is absent falls back to
+    -- T1, so T3+/T4+ target filters and TP TO BEST misjudged them.
+    ["B01_T3"] = { name = "Ancient Wildroot Seed", tier = "T3" },
+    ["B01_T4"] = { name = "Seedwarden Seed", tier = "T4Guardian" },
+    ["B02_T4"] = { name = "Marshlord Seed", tier = "T4Guardian" },
+    ["B03_T3"] = { name = "Ancient Permafrost Seed", tier = "T3" },
+    ["B03_T4"] = { name = "Frostwarden Seed", tier = "T4Guardian" },
+    ["B04_T3"] = { name = "Ancient Mycelium Seed", tier = "T3" },
+    ["B04_T4"] = { name = "Mycelord Seed", tier = "T4Guardian" },
+    ["B05_T3"] = { name = "Ancient Caldera Seed", tier = "T3" },
+    ["B05_T4"] = { name = "Embermane Seed", tier = "T4Guardian" },
+    ["B06_T2"] = { name = "Primal Seed", tier = "T2" },
+    ["B06_T3"] = { name = "Ancient Amber Seed", tier = "T3" },
+    ["B06_T4"] = { name = "Bonecrusher Seed", tier = "T4Guardian" },
+    ["B07_T3"] = { name = "Ancient Genome Seed", tier = "T3" },
+    ["B08_T3"] = { name = "Ancient Void Seed", tier = "T3" },
+    ["B08_T4"] = { name = "Voidwarden Seed", tier = "T4Guardian" },
+    ["ANCIENT_SEED"] = { name = "Primordial Seed", tier = "T4Guardian" },
+    ["ABYSSAL_LEVIATHAN_SEED"] = { name = "Abyssal Seed", tier = "T4Guardian" },
+    ["NIGHTMARE_SOUL_SEED"] = { name = "Nightmare Soul Seed", tier = "T4Guardian" },
+    ["BLOODMOON_CURSE_SEED"] = { name = "Bloodmoon Curse Seed", tier = "T4Guardian" },
+    ["BLACK_HOLE_SEED"] = { name = "Black Hole Seed", tier = "T4Guardian" },
+    ["PUMPKIN_IMP_SEED"] = { name = "Pumpkin Imp Seed", tier = "T4Guardian" },
+    ["ARENA_SEED"] = { name = "Legionary Seed", tier = "T1" },
+    ["ARENA_IMPERIAL_SEED"] = { name = "Legatus Seed", tier = "T1" },
+    ["ARENA_FROSTGUARD_SEED"] = { name = "Centurion Seed", tier = "T1" },
+    ["ARENA_LEGION_SEED"] = { name = "Imperator Seed", tier = "T1" },
 }
 
 -- Find all wild seeds (same logic as v7.2 which worked)
@@ -967,8 +997,8 @@ local VALID_THEMES = { Default = true, Green = true, DarkBlue = true, Amethyst =
 if getgenv().__SeedFarmTheme and not VALID_THEMES[getgenv().__SeedFarmTheme] then getgenv().__SeedFarmTheme = nil end
 
 local Window = Rayfield:CreateWindow({
-    Name = "🌱 Seed Farm v10.78",
-    LoadingTitle = "Seed Farm v10.78",
+    Name = "🌱 Seed Farm v10.81",
+    LoadingTitle = "Seed Farm v10.81",
     LoadingSubtitle = "Rayfield GUI",
     Theme = getgenv().__SeedFarmTheme or "Green",
     ToggleUIKeybind = Enum.KeyCode.RightControl,
@@ -1300,6 +1330,208 @@ for tier = 1, 5 do
         Callback = function() teleportToChamber(t) end,
     })
 end
+
+SpeedwayTab:CreateSection("⚡ Lightning Chamber")
+
+-- Lightning chamber (from the game's lightning-chamber-config, Oct 22 2026):
+-- a 3x3 pad grid in its own room. Pad 5 IS the chamber center, and the
+-- module's own lightningPadPosition(i) gives exact world positions, so no
+-- coordinates are hardcoded here. Grid (viewed from the south door):
+--   7 8 9   (north / board wall)
+--   4 5 6
+--   1 2 3   (south / door side)
+local lightningCfgCache = false -- false = not tried yet
+local function getLightningCfg()
+    if lightningCfgCache ~= false then return lightningCfgCache end
+    local ok, mod = pcall(function()
+        local rs = game:GetService("ReplicatedStorage")
+        local common = rs:FindFirstChild("Common")
+        local cfgFolder = common and common:FindFirstChild("config")
+        local m = cfgFolder and cfgFolder:FindFirstChild("lightning-chamber-config")
+        if not m then return nil end
+        return require(m)
+    end)
+    lightningCfgCache = (ok and mod) or nil
+    return lightningCfgCache
+end
+
+local function teleportToLightningPad(pad)
+    local cfg = getLightningCfg()
+    if not cfg or not cfg.lightningPadPosition then
+        setStatus("Lightning config not found!")
+        print("[SeedFarm] lightning teleport: lightning-chamber-config not resolved")
+        return
+    end
+    if cfg.lightningChamberEnabled then
+        local okE, enabled = pcall(function() return cfg.lightningChamberEnabled() end)
+        if okE and enabled == false then
+            setStatus("Lightning Chamber is disabled here!")
+            print("[SeedFarm] lightning teleport: chamber disabled on this server")
+            return
+        end
+    end
+    local ok, pos = pcall(function() return cfg.lightningPadPosition(pad) end)
+    if not ok or typeof(pos) ~= "Vector3" then
+        setStatus("Lightning position failed!")
+        print("[SeedFarm] lightning teleport: pad position failed for pad " .. pad)
+        return
+    end
+    local root = getRoot()
+    if not root then setStatus("No character!") return end
+    root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+    if pad == 5 then
+        setStatus("⚡ Lightning Chamber")
+    else
+        setStatus("⚡ Lightning Pad " .. pad)
+    end
+    print(string.format("[SeedFarm] teleported to lightning pad %d at %s", pad, tostring(pos)))
+end
+
+SpeedwayTab:CreateButton({
+    Name = "⚡ Lightning Chamber (center)",
+    Callback = function() teleportToLightningPad(5) end,
+})
+SpeedwayTab:CreateLabel("Pads, north row first (board wall) to south (door):")
+for _, pad in ipairs({ 7, 8, 9, 4, 5, 6, 1, 2, 3 }) do
+    local p = pad -- fresh local per iteration for the closure
+    SpeedwayTab:CreateButton({
+        Name = "⚡ Pad " .. p,
+        Callback = function() teleportToLightningPad(p) end,
+    })
+end
+
+-- AUTO LIGHTNING: the game broadcasts every strike on an instance named
+-- "LightningChamberState" (attributes per lightning-chamber-config):
+-- StrikeId, Pad (target), Pad2, WarnAt, StrikeAt, Golden, Surge. The bot
+-- teleports to the announced pad the moment a new StrikeId appears (the
+-- warning window is ~2.5s) and stays for the strike. Pad hops are 13
+-- studs, which also clears the game's 4-stud activity check; a repeated
+-- pad gets a quick out-and-back shuffle instead. The per-strike console
+-- line logs Pad/Pad2/Golden and the combo before->after, so one run
+-- proves which pad is real if Pad2 turns out to matter.
+local lightningAuto = false
+local lightningGen = 0
+
+local function findLightningState()
+    for _, rootInst in ipairs({ workspace, game:GetService("ReplicatedStorage") }) do
+        local hit = rootInst:FindFirstChild("LightningChamberState", true)
+        if hit then return hit end
+    end
+    return nil
+end
+
+local function playerCombo()
+    local ok, v = pcall(function()
+        return Players.LocalPlayer:GetAttribute("LightningCombo")
+    end)
+    if ok and type(v) == "number" then return v end
+    return nil
+end
+
+local function autoLightningLoop(gen)
+    local cfg = getLightningCfg()
+    if not cfg or not cfg.lightningPadPosition then
+        setStatus("Lightning config not found!")
+        print("[SeedFarm] auto lightning: config not resolved")
+        lightningAuto = false
+        return
+    end
+    teleportToLightningPad(5) -- enter at center so the chamber starts
+    local state = findLightningState()
+    local lastSid = nil
+    local lastPad = nil
+    while lightningAuto and gen == lightningGen do
+        if not state or not state.Parent then
+            state = findLightningState()
+            if state then
+                print("[SeedFarm] auto lightning: state instance found ("
+                    .. state:GetFullName() .. ")")
+            end
+        end
+        if state then
+            local sid = state:GetAttribute("StrikeId")
+            local pad = state:GetAttribute("Pad")
+            if sid ~= nil and sid ~= lastSid
+                and type(pad) == "number" and pad >= 1 and pad <= 9 then
+                lastSid = sid
+                local pad2 = state:GetAttribute("Pad2")
+                local golden = state:GetAttribute("Golden")
+                local surge = state:GetAttribute("Surge")
+                local strikeAt = state:GetAttribute("StrikeAt")
+                local comboBefore = playerCombo()
+                local ok, pos = pcall(function()
+                    return cfg.lightningPadPosition(pad)
+                end)
+                if ok and typeof(pos) == "Vector3" then
+                    local root = getRoot()
+                    if root then
+                        if pad == lastPad then
+                            -- same pad twice: shuffle out and back so
+                            -- the activity check still sees real movement
+                            root.CFrame = CFrame.new(pos
+                                + Vector3.new(5.5, 3, 0))
+                            task.wait(0.35)
+                            if not (lightningAuto and gen == lightningGen) then
+                                return
+                            end
+                            root = getRoot()
+                            if root then
+                                root.CFrame = CFrame.new(pos
+                                    + Vector3.new(0, 3, 0))
+                            end
+                        else
+                            root.CFrame = CFrame.new(pos
+                                + Vector3.new(0, 3, 0))
+                        end
+                    end
+                    lastPad = pad
+                    setStatus("⚡ Pad " .. pad
+                        .. (golden and " 🌟 GOLDEN" or "")
+                        .. " - strike #" .. tostring(sid))
+                    local delayS = 1
+                    if type(strikeAt) == "number" then
+                        local okT, now = pcall(function()
+                            return workspace:GetServerTimeNow()
+                        end)
+                        if okT and type(now) == "number" then
+                            delayS = math.clamp(strikeAt - now + 0.6,
+                                0.3, 5)
+                        end
+                    end
+                    local mySid = sid
+                    task.delay(delayS, function()
+                        print(string.format(
+                            "[SeedFarm] ⚡ strike #%s pad %s (pad2=%s "
+                            .. "golden=%s surge=%s) combo %s -> %s",
+                            tostring(mySid), tostring(pad),
+                            tostring(pad2), tostring(golden),
+                            tostring(surge), tostring(comboBefore),
+                            tostring(playerCombo())))
+                    end)
+                end
+            end
+        end
+        task.wait(0.15)
+    end
+end
+
+SpeedwayTab:CreateToggle({
+    Name = "⚡ AUTO LIGHTNING",
+    CurrentValue = false,
+    Callback = function(value)
+        lightningAuto = value
+        lightningGen = lightningGen + 1
+        if value then
+            setStatus("⚡ Auto Lightning ON")
+            print("[SeedFarm] auto lightning ON - watching "
+                .. "LightningChamberState")
+            task.spawn(function() autoLightningLoop(lightningGen) end)
+        else
+            setStatus("⚡ Auto Lightning OFF")
+            print("[SeedFarm] auto lightning OFF")
+        end
+    end,
+})
 
 --------------------------------------------------------------------------------
 -- IMP FARM TAB (pumpkin imp farmer v1.1, merged in)
@@ -2422,7 +2654,7 @@ local hookOk, hookErr = pcall(function()
 end)
 if not hookOk then print("[SeedFarm] carry hook ERROR: " .. tostring(hookErr)) end
 
-print("[SeedFarm] v10.78 loaded - pick a seed!")
+print("[SeedFarm] v10.81 loaded - pick a seed!")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
